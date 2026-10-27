@@ -1,0 +1,721 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bubble Pop - Jeu</title>
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      background: #101225;
+      color: white;
+      min-height: 100vh;
+      overflow: hidden;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    button {
+      font-family: inherit;
+      cursor: pointer;
+      border: none;
+    }
+
+    .screen {
+      display: none;
+      width: 100%;
+      min-height: 100vh;
+    }
+
+    .screen.active {
+      display: flex;
+    }
+
+    /* MENU */
+
+    #menu {
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      text-align: center;
+      background:
+        radial-gradient(circle at top, #292d61, #101225 65%);
+    }
+
+    .logo {
+      font-size: clamp(38px, 8vw, 68px);
+      font-weight: 900;
+      letter-spacing: 3px;
+      margin-bottom: 12px;
+      color: #8ef7ff;
+      text-shadow: 0 0 25px #00d9ff70;
+    }
+
+    .subtitle {
+      color: #c4c8e7;
+      margin-bottom: 42px;
+      font-size: 16px;
+    }
+
+    .modes {
+      width: 100%;
+      max-width: 760px;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 22px;
+    }
+
+    .mode {
+      background: #202443;
+      border: 2px solid #383e69;
+      border-radius: 24px;
+      padding: 30px 20px;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+
+    .mode:hover {
+      transform: translateY(-5px);
+      border-color: #8ef7ff;
+    }
+
+    .mode.chrono {
+      border-color: #ffbd69;
+    }
+
+    .icon {
+      font-size: 52px;
+      margin-bottom: 16px;
+    }
+
+    .mode h2 {
+      font-size: 27px;
+      margin-bottom: 12px;
+      letter-spacing: 2px;
+    }
+
+    .mode p {
+      color: #c4c8e7;
+      line-height: 1.6;
+      min-height: 52px;
+      margin-bottom: 22px;
+    }
+
+    .play {
+      padding: 14px 30px;
+      width: 100%;
+      border-radius: 12px;
+      background: #78f1f4;
+      color: #101225;
+      font-size: 16px;
+      font-weight: 900;
+      transition: transform 0.2s, filter 0.2s;
+    }
+
+    .play:hover {
+      transform: scale(1.04);
+      filter: brightness(1.1);
+    }
+
+    .chrono .play {
+      background: #ffbd69;
+    }
+
+    /* JEU */
+
+    #game {
+      position: relative;
+      flex-direction: column;
+      background:
+        radial-gradient(circle at center, #20274c, #101225 75%);
+      height: 100dvh;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .topbar {
+      position: relative;
+      z-index: 5;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 18px 22px;
+      background: #151832e8;
+      border-bottom: 1px solid #34395e;
+    }
+
+    .stat {
+      text-align: center;
+      min-width: 65px;
+    }
+
+    .stat-label {
+      font-size: 11px;
+      color: #aeb5dc;
+      letter-spacing: 1px;
+      margin-bottom: 5px;
+    }
+
+    .stat-value {
+      font-size: 24px;
+      font-weight: 900;
+    }
+
+    #timer {
+      color: #ffbd69;
+    }
+
+    #score {
+      color: #8ef7ff;
+    }
+
+    .menu-button {
+      padding: 10px 14px;
+      border-radius: 10px;
+      background: #34395e;
+      color: white;
+      font-weight: bold;
+    }
+
+    #arena {
+      position: relative;
+      flex: 1;
+      overflow: hidden;
+      touch-action: manipulation;
+    }
+
+    .bubble {
+      position: absolute;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      cursor: pointer;
+      animation: appear 0.18s ease-out;
+      border: 2px solid #ffffffa0;
+      box-shadow:
+        inset -8px -10px 18px #00000025,
+        inset 5px 5px 12px #ffffff60,
+        0 0 18px #ffffff20;
+      transition: transform 0.1s;
+    }
+
+    .bubble::after {
+      content: "";
+      position: absolute;
+      top: 17%;
+      left: 22%;
+      width: 23%;
+      height: 13%;
+      border-radius: 50%;
+      background: #ffffffb8;
+      transform: rotate(-35deg);
+    }
+
+    .bubble:hover {
+      transform: scale(1.08);
+    }
+
+    .bubble.pop {
+      pointer-events: none;
+      animation: pop 0.16s ease-in forwards;
+    }
+
+    .bubble.pop::after {
+      display: none;
+    }
+
+    @keyframes appear {
+      from {
+        transform: scale(0);
+      }
+      to {
+        transform: scale(1);
+      }
+    }
+
+    @keyframes pop {
+      to {
+        transform: scale(1.7);
+        opacity: 0;
+      }
+    }
+
+    .hint {
+      position: absolute;
+      bottom: 20px;
+      left: 0;
+      right: 0;
+      text-align: center;
+      color: #858dbb;
+      font-size: 13px;
+      pointer-events: none;
+    }
+
+    /* FIN DE PARTIE */
+
+    #endScreen {
+      position: absolute;
+      inset: 0;
+      z-index: 10;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: #101225eF;
+      backdrop-filter: blur(8px);
+      text-align: center;
+    }
+
+    #endScreen.visible {
+      display: flex;
+    }
+
+    .end-card {
+      width: 100%;
+      max-width: 400px;
+      padding: 35px 25px;
+      background: #202443;
+      border: 1px solid #414878;
+      border-radius: 24px;
+    }
+
+    .end-card h2 {
+      font-size: 32px;
+      margin-bottom: 15px;
+    }
+
+    .end-card p {
+      color: #c4c8e7;
+      margin-bottom: 12px;
+    }
+
+    .final-score {
+      font-size: 54px;
+      font-weight: 900;
+      color: #8ef7ff;
+      margin: 15px 0 25px;
+    }
+
+    .end-card .play {
+      margin-bottom: 10px;
+    }
+
+    .secondary {
+      padding: 14px;
+      width: 100%;
+      border-radius: 12px;
+      background: #34395e;
+      color: white;
+      font-weight: bold;
+    }
+
+    @media (max-width: 560px) {
+      #menu {
+        justify-content: flex-start;
+        padding-top: 50px;
+      }
+
+      .modes {
+        grid-template-columns: 1fr;
+        max-width: 360px;
+        gap: 15px;
+      }
+
+      .mode {
+        padding: 20px 18px;
+      }
+
+      .icon {
+        font-size: 38px;
+        margin-bottom: 8px;
+      }
+
+      .mode h2 {
+        font-size: 23px;
+      }
+
+      .mode p {
+        min-height: auto;
+        margin-bottom: 15px;
+      }
+
+      .play {
+        padding: 12px 20px;
+      }
+
+      .topbar {
+        padding: 14px 10px;
+      }
+
+      .stat-value {
+        font-size: 21px;
+      }
+
+      .menu-button {
+        padding: 9px;
+        font-size: 12px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- MENU PRINCIPAL -->
+
+  <section id="menu" class="screen active">
+    <h1 class="logo">BUBBLE POP</h1>
+    <p class="subtitle">Éclate les bulles et bats ton record !</p>
+
+    <div class="modes">
+
+      <div class="mode chrono">
+        <div class="icon">⏱️</div>
+        <h2>CHRONO</h2>
+        <p>1 minute pour éclater un maximum de bulles !</p>
+        <button class="play" onclick="startGame('chrono')">
+          JOUER
+        </button>
+      </div>
+
+      <div class="mode">
+        <div class="icon">♾️</div>
+        <h2>INFINI</h2>
+        <p>Joue sans limite de temps et bats ton record !</p>
+        <button class="play" onclick="startGame('infinite')">
+          JOUER
+        </button>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ÉCRAN DE JEU -->
+
+  <section id="game" class="screen">
+
+    <div class="topbar">
+      <button class="menu-button" onclick="goToMenu()">
+        ← MENU
+      </button>
+
+      <div class="stat">
+        <div class="stat-label">MODE</div>
+        <div class="stat-value" id="modeLabel">CHRONO</div>
+      </div>
+
+      <div class="stat">
+        <div class="stat-label">SCORE</div>
+        <div class="stat-value" id="score">0</div>
+      </div>
+
+      <div class="stat">
+        <div class="stat-label" id="timerLabel">TEMPS</div>
+        <div class="stat-value" id="timer">60</div>
+      </div>
+    </div>
+
+    <div id="arena">
+      <div class="hint">Clique ou touche les bulles pour les éclater !</div>
+    </div>
+
+    <!-- ÉCRAN DE FIN -->
+
+    <div id="endScreen">
+      <div class="end-card">
+        <h2 id="endTitle">PARTIE TERMINÉE !</h2>
+        <p>Ton score</p>
+        <div class="final-score" id="finalScore">0</div>
+        <p id="recordText">Bien joué !</p>
+
+        <button class="play" onclick="restartGame()">
+          REJOUER
+        </button>
+
+        <button class="secondary" onclick="goToMenu()">
+          RETOUR AU MENU
+        </button>
+      </div>
+    </div>
+
+  </section>
+
+  <script>
+    // =====================================
+    // CONFIGURATION
+    // =====================================
+
+    const CHRONO_DURATION = 60;
+    const BUBBLE_INTERVAL = 420;
+    const MAX_BUBBLES = 18;
+
+    const COLORS = [
+      "#ff6b9d",
+      "#8b7cff",
+      "#45d9e8",
+      "#ffd166",
+      "#70e69a",
+      "#ff8b5e",
+      "#c77dff"
+    ];
+
+    let currentMode = "chrono";
+    let score = 0;
+    let timeLeft = CHRONO_DURATION;
+    let bestScore = 0;
+
+    let gameRunning = false;
+    let bubbleTimer = null;
+    let countdownTimer = null;
+    let currentSession = 0;
+
+    const menu = document.getElementById("menu");
+    const game = document.getElementById("game");
+    const arena = document.getElementById("arena");
+    const scoreElement = document.getElementById("score");
+    const timerElement = document.getElementById("timer");
+    const timerLabel = document.getElementById("timerLabel");
+    const modeLabel = document.getElementById("modeLabel");
+    const endScreen = document.getElementById("endScreen");
+
+    // =====================================
+    // BLOQUER LE CLIC DROIT
+    // =====================================
+
+    document.addEventListener("contextmenu", function(event) {
+      event.preventDefault();
+    });
+
+    // Bloquer le glisser-déposer d'éléments
+    document.addEventListener("dragstart", function(event) {
+      event.preventDefault();
+    });
+
+    // =====================================
+    // DÉMARRER UNE PARTIE
+    // =====================================
+
+    function startGame(mode) {
+      // Demander le plein écran à la suite du clic sur CHRONO ou INFINI.
+      // Certains navigateurs peuvent refuser cette demande : le jeu continue alors normalement.
+      const page = document.documentElement;
+      if (!document.fullscreenElement && page.requestFullscreen) {
+        page.requestFullscreen().catch(function(error) {
+          console.info("Le plein écran n'a pas pu être activé.", error);
+        });
+      }
+
+      stopTimers();
+
+      currentSession++;
+      currentMode = mode;
+      score = 0;
+      timeLeft = CHRONO_DURATION;
+      gameRunning = true;
+
+      menu.classList.remove("active");
+      game.classList.add("active");
+      endScreen.classList.remove("visible");
+
+      clearBubbles();
+
+      scoreElement.textContent = "0";
+
+      if (currentMode === "chrono") {
+        modeLabel.textContent = "CHRONO";
+        timerLabel.textContent = "TEMPS";
+        timerElement.textContent = timeLeft;
+        timerElement.style.color = "#ffbd69";
+      } else {
+        modeLabel.textContent = "INFINI";
+        timerLabel.textContent = "TEMPS";
+        timerElement.textContent = "∞";
+        timerElement.style.color = "#8ef7ff";
+      }
+
+      // Créer les premières bulles
+      for (let i = 0; i < 6; i++) {
+        createBubble();
+      }
+
+      // Apparition continue des bulles
+      bubbleTimer = setInterval(function() {
+        if (gameRunning) {
+          createBubble();
+        }
+      }, BUBBLE_INTERVAL);
+
+      // Le compte à rebours ne fonctionne qu'en mode chrono
+      if (currentMode === "chrono") {
+        countdownTimer = setInterval(function() {
+          if (!gameRunning) return;
+
+          timeLeft--;
+          timerElement.textContent = timeLeft;
+
+          if (timeLeft <= 10) {
+            timerElement.style.color = "#ff6b9d";
+          }
+
+          if (timeLeft <= 0) {
+            endGame();
+          }
+        }, 1000);
+      }
+    }
+
+    // =====================================
+    // CRÉER UNE BULLE
+    // =====================================
+
+    function createBubble() {
+      if (!gameRunning) return;
+
+      const bubbles = arena.querySelectorAll(".bubble");
+
+      if (bubbles.length >= MAX_BUBBLES) {
+        return;
+      }
+
+      const bubble = document.createElement("div");
+      bubble.className = "bubble";
+
+      const size = Math.floor(Math.random() * 42) + 42;
+      const maxX = Math.max(0, arena.clientWidth - size);
+      const maxY = Math.max(0, arena.clientHeight - size - 25);
+
+      const x = Math.random() * maxX;
+      const y = Math.random() * maxY;
+
+      const color = COLORS[
+        Math.floor(Math.random() * COLORS.length)
+      ];
+
+      bubble.style.width = size + "px";
+      bubble.style.height = size + "px";
+      bubble.style.left = x + "px";
+      bubble.style.top = y + "px";
+      bubble.style.background = color;
+
+      // Éclater la bulle au clic ou au toucher
+      bubble.addEventListener("pointerdown", function(event) {
+        event.preventDefault();
+        event.stopPropagation();
+
+        if (!gameRunning || bubble.classList.contains("pop")) {
+          return;
+        }
+
+        popBubble(bubble);
+      });
+
+      arena.appendChild(bubble);
+    }
+
+    // =====================================
+    // ÉCLATER UNE BULLE
+    // =====================================
+
+    function popBubble(bubble) {
+      bubble.classList.add("pop");
+
+      score++;
+      scoreElement.textContent = score;
+
+      setTimeout(function() {
+        bubble.remove();
+      }, 160);
+    }
+
+    // =====================================
+    // ARRÊTER LES MINUTEURS
+    // =====================================
+
+    function stopTimers() {
+      if (bubbleTimer !== null) {
+        clearInterval(bubbleTimer);
+        bubbleTimer = null;
+      }
+
+      if (countdownTimer !== null) {
+        clearInterval(countdownTimer);
+        countdownTimer = null;
+      }
+    }
+
+    // =====================================
+    // SUPPRIMER LES BULLES
+    // =====================================
+
+    function clearBubbles() {
+      arena.querySelectorAll(".bubble").forEach(function(bubble) {
+        bubble.remove();
+      });
+    }
+
+    // =====================================
+    // FIN DE PARTIE
+    // =====================================
+
+    function endGame() {
+      if (!gameRunning) return;
+
+      gameRunning = false;
+      stopTimers();
+
+      const previousBest = bestScore;
+      bestScore = Math.max(bestScore, score);
+
+      document.getElementById("endTitle").textContent =
+        currentMode === "chrono"
+          ? "TEMPS ÉCOULÉ !"
+          : "PARTIE TERMINÉE !";
+
+      document.getElementById("finalScore").textContent = score;
+
+      document.getElementById("recordText").textContent =
+        score > previousBest
+          ? "🏆 Nouveau record : " + bestScore + " bulles !"
+          : "Record de cette session : " + bestScore;
+
+      endScreen.classList.add("visible");
+    }
+
+    // =====================================
+    // REJOUER
+    // =====================================
+
+    function restartGame() {
+      startGame(currentMode);
+    }
+
+    // =====================================
+    // RETOUR AU MENU
+    // =====================================
+
+    function goToMenu() {
+      gameRunning = false;
+      currentSession++;
+
+      stopTimers();
+      clearBubbles();
+
+      endScreen.classList.remove("visible");
+      game.classList.remove("active");
+      menu.classList.add("active");
+    }
+  </script>
+
+</body>
+</html>
